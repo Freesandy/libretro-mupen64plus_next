@@ -116,8 +116,8 @@ typedef enum {
 
 extern RSP_INFO RSP_INFO_NAME;
 extern pu8 DRAM;
-extern pu8 DMEM;
-extern pu8 IMEM;
+extern pu8 PDMEM;
+extern pu8 PIMEM;
 
 extern u8 conf[32];
 
