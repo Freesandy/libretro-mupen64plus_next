@@ -1,4 +1,4 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+﻿/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-Next - libretro.c                                       *
  *   Copyright (C) 2020 M4xw <m4x@m4xw.net                               *
  *                                                                    *
@@ -236,158 +236,158 @@ static void setup_variables(void)
     struct retro_variable variables[] = {
         { CORE_NAME "-cpucore",
 #ifdef DYNAREC
-            "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
+            "CPU内核; 动态重编译器|缓存式解释器|纯解释器" },
 #else
-            "CPU Core; cached_interpreter|pure_interpreter" },
+            "CPU内核; 缓存式解释器|纯解释器" },
 #endif
         { CORE_NAME "-rdp-plugin",
-            "RDP Mode; " OPTION_ENTRY_RDP_GLIDEN64 OPTION_ENTRY_RDP_ANGRYLION },
+            "RDP模式; " OPTION_ENTRY_RDP_GLIDEN64 OPTION_ENTRY_RDP_ANGRYLION },
         { CORE_NAME "-rsp-plugin",
-            "RSP Mode; " OPTION_ENTRY_RSP_HLE OPTION_ENTRY_RSP_PARALLEL OPTION_ENTRY_RSP_CXD4 },
+            "RSP模式; " OPTION_ENTRY_RSP_HLE OPTION_ENTRY_RSP_PARALLEL OPTION_ENTRY_RSP_CXD4 },
         { CORE_NAME "-43screensize",
-            "(GLN64) 4:3 Resolution; 640x480|320x240|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2560x1920|2880x2160|3200x2400|3520x2640|3840x2880" },
+            "(GLN64) 4:3分辨率; 640x480|320x240|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2560x1920|2880x2160|3200x2400|3520x2640|3840x2880" },
         { CORE_NAME "-169screensize",
-            "(GLN64) 16:9 Resolution; 960x540|640x360|1280x720|1920x1080|2560x1440|3840x2160|4096x2160|7680x4320" },
+            "(GLN64) 16:9分辨率; 960x540|640x360|1280x720|1920x1080|2560x1440|3840x2160|4096x2160|7680x4320" },
         { CORE_NAME "-aspect",
-            "(GLN64) Aspect Ratio; 4:3|16:9|16:9 adjusted" },
+            "(GLN64) 宽高比; 4:3|16:9|16:9调整" },
         { CORE_NAME "-BilinearMode",
-            "(GLN64) Bilinear filtering mode; standard|3point" },
+            "(GLN64) 双线性过滤模式; 标准|3点取样" },
 #ifndef HAVE_OPENGLES2
         { CORE_NAME "-MultiSampling",
-            "(GLN64) MSAA level; 0|2|4|8|16" },
+            "(GLN64) MSAA等级; 0|2|4|8|16" },
 #endif
         { CORE_NAME "-FXAA",
             "(GLN64) FXAA; 0|1" },
 
         { CORE_NAME "-NoiseEmulation",
-            "(GLN64) Noise Emulation; True|False" },
+            "(GLN64) 噪音模拟; True|False" },
 
         { CORE_NAME "-EnableFBEmulation",
 #ifdef VC
-            "(GLN64) Framebuffer Emulation; False|True" },
+            "(GLN64) 帧缓冲模拟; False|True" },
 #else
-            "(GLN64) Framebuffer Emulation; True|False" },
+            "(GLN64) 帧缓冲模拟; True|False" },
 #endif
 
         { CORE_NAME "-EnableLODEmulation",
-            "(GLN64) LOD Emulation; True|False" },
+            "(GLN64) LOD模拟; True|False" },
         { CORE_NAME "-EnableCopyColorToRDRAM",
 #ifndef HAVE_OPENGLES
-            "(GLN64) Color buffer to RDRAM; Async|Sync|Off" },
+            "(GLN64) 拷贝色彩缓冲到RDRAM; 异步|同步|关闭" },
 #else
-            "(GLN64) Color buffer to RDRAM; Off|Async|Sync" },
+            "(GLN64) 拷贝色彩缓冲到RDRAM; 关闭|异步|同步" },
 #endif
         { CORE_NAME "-EnableCopyDepthToRDRAM",
-            "(GLN64) Depth buffer to RDRAM; Software|FromMem|Off" },
+            "(GLN64) RDRAM深度缓冲; 软件方式|从显存拷贝|关闭" },
         { CORE_NAME "-BackgroundMode",
-            "(GLN64) Background Mode; OnePiece|Stripped" },
+            "(GLN64) 背景模式; 整块|条带" },
         { CORE_NAME "-EnableHWLighting",
-            "(GLN64) Hardware per-pixel lighting; False|True" },
+            "(GLN64) 硬件每像素光影计算; False|True" },
         { CORE_NAME "-CorrectTexrectCoords",
-            "(GLN64) Continuous texrect coords; Off|Auto|Force" },
+            "(GLN64) 连续纹理边界坐标; 关闭|自动|强制" },
         { CORE_NAME "-EnableNativeResTexrects",
-            "(GLN64) Native res. 2D texrects; Disabled|Optimized|Unoptimized" },
+            "(GLN64) 原始分辨率2D纹理; Disabled|优化的|无优化的" },
 #if defined(HAVE_OPENGLES)
         { CORE_NAME "-EnableLegacyBlending",
-            "(GLN64) Less accurate blending mode; True|False" },
+            "(GLN64) 低精度混合模式; True|False" },
         { CORE_NAME "-EnableFragmentDepthWrite",
-            "(GLN64) GPU shader depth write; False|True" },
+            "(GLN64) GPU着色器深度写入; False|True" },
 #else
         { CORE_NAME "-EnableLegacyBlending",
-            "(GLN64) Less accurate blending mode; False|True" },
+            "(GLN64) 低精度混合模式; False|True" },
         { CORE_NAME "-EnableFragmentDepthWrite",
-            "(GLN64) GPU shader depth write; True|False" },
+            "(GLN64) GPU着色器深度写入; True|False" },
 #endif
 #if !defined(VC) && !defined(HAVE_OPENGLES)
         // Not supported on all GPU's
         { CORE_NAME "-EnableN64DepthCompare",
-            "(GLN64) N64 Depth Compare; False|True" },
+            "(GLN64) N64 深度比较; False|True" },
         { CORE_NAME "-EnableShadersStorage",
-            "(GLN64) Cache GPU Shaders; True|False" },
+            "(GLN64) 缓存GPU着色器; True|False" },
 #endif // !defined(VC) && !defined(HAVE_OPENGLES)
         { CORE_NAME "-EnableTextureCache",
-            "(GLN64) Cache Textures; True|False" },
+            "(GLN64) 缓存纹理; True|False" },
         { CORE_NAME "-EnableOverscan",
-            "(GLN64) Overscan; Enabled|Disabled" },
+            "(GLN64) 过扫描; Enabled|Disabled" },
         { CORE_NAME "-OverscanTop",
-            "(GLN64) Overscan Offset (Top); " GLN64_OVERSCAN_SCALING },
+            "(GLN64) 过扫描偏移量（顶部）; " GLN64_OVERSCAN_SCALING },
         { CORE_NAME "-OverscanLeft",
-            "(GLN64) Overscan Offset (Left); " GLN64_OVERSCAN_SCALING },
+            "(GLN64) 过扫描偏移量（左边）; " GLN64_OVERSCAN_SCALING },
         { CORE_NAME "-OverscanRight",
-            "(GLN64) Overscan Offset (Right); " GLN64_OVERSCAN_SCALING },
+            "(GLN64) 过扫描偏移量（右边）; " GLN64_OVERSCAN_SCALING },
         { CORE_NAME "-OverscanBottom",
-            "(GLN64) Overscan Offset (Bottom); " GLN64_OVERSCAN_SCALING },
+            "(GLN64) 过扫描偏移量（底部）; " GLN64_OVERSCAN_SCALING },
 
         { CORE_NAME "-MaxTxCacheSize",
 #if defined(VC)
-            "(GLN64) Max texture cache size; 1500|8000|4000" },
+            "(GLN64) 最大纹理缓存大小; 1500|8000|4000" },
 #elif defined(HAVE_LIBNX)
-            "(GLN64) Max texture cache size; 4000|1500|8000" },
+            "(GLN64) 最大纹理缓存大小; 4000|1500|8000" },
 #else
-            "(GLN64) Max texture cache size; 8000|4000|1500" },
+            "(GLN64) 最大纹理缓存大小; 8000|4000|1500" },
 #endif
         { CORE_NAME "-txFilterMode",
-            "(GLN64) Texture filter; None|Smooth filtering 1|Smooth filtering 2|Smooth filtering 3|Smooth filtering 4|Sharp filtering 1|Sharp filtering 2" },
+            "(GLN64) 纹理滤镜; 无|平滑滤镜1|平滑滤镜2|平滑滤镜3|平滑滤镜4|锐化滤镜1|锐化滤镜2" },
         { CORE_NAME "-txEnhancementMode",
-            "(GLN64) Texture Enhancement; None|As Is|X2|X2SAI|HQ2X|HQ2XS|LQ2X|LQ2XS|HQ4X|2xBRZ|3xBRZ|4xBRZ|5xBRZ|6xBRZ" },
+            "(GLN64) 纹理增强; 无|原始|X2|X2SAI|HQ2X|HQ2XS|LQ2X|LQ2XS|HQ4X|2xBRZ|3xBRZ|4xBRZ|5xBRZ|6xBRZ" },
         { CORE_NAME "-txFilterIgnoreBG",
-            "(GLN64) Filter background textures; True|False" },
+            "(GLN64) 过滤背景纹理; True|False" },
         { CORE_NAME "-txHiresEnable",
-            "(GLN64) Use High-Res textures; False|True" },
+            "(GLN64) 使用高清纹理; False|True" },
         { CORE_NAME "-txCacheCompression",
-            "(GLN64) Use High-Res Texture Cache Compression; True|False" },
+            "(GLN64) 使用高清纹理缓存压缩; True|False" },
         { CORE_NAME "-txHiresFullAlphaChannel",
-            "(GLN64) Use High-Res Full Alpha Channel; False|True" },
+            "(GLN64) 使用高清纹理全部Alpha通道; False|True" },
         { CORE_NAME "-EnableEnhancedTextureStorage",
-            "(GLN64) Use enhanced Texture Storage; False|True" },
+            "(GLN64) 使用增强型纹理存储; False|True" },
         { CORE_NAME "-EnableEnhancedHighResStorage",
-            "(GLN64) Use enhanced Hi-Res Storage; False|True" },
+            "(GLN64) 使用增强型高清纹理存储; False|True" },
 #ifdef HAVE_THR_AL
         { CORE_NAME "-angrylion-vioverlay",
-            "(AL) VI Overlay; Filtered|AA+Blur|AA+Dedither|AA only|Unfiltered|Depth|Coverage" },
+            "(AL) VI 覆盖层; 全滤镜|抗锯齿+模糊|抗锯齿+消除抖动|仅抗锯齿|无滤镜|深度|范围" },
         { CORE_NAME "-angrylion-sync",
-            "(AL) Thread sync level; Low|Medium|High" },
+            "(AL) 线程同步级别; 低|中|高" },
         { CORE_NAME "-angrylion-multithread",
-            "(AL) Multi-threading; all threads|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|58|59|60|61|62|63" },
+            "(AL) 多线程; 全部线程|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|58|59|60|61|62|63" },
         { CORE_NAME "-angrylion-overscan",
-            "(AL) Hide overscan; disabled|enabled" },
+            "(AL) 隐藏过扫描; disabled|enabled" },
 #endif // HAVE_THR_AL
         { CORE_NAME "-FrameDuping",
 #ifdef HAVE_LIBNX
-            "Frame Duplication; True|False" },
+            "帧重用; True|False" },
 #else
-            "Frame Duplication; False|True" },
+            "帧重用; False|True" },
 #endif
         { CORE_NAME "-Framerate",
-            "Framerate; Original|Fullspeed" },
+            "帧率控制; 原始|全速" },
         { CORE_NAME "-virefresh",
-            "VI Refresh (Overclock); Auto|1500|2200" },
+            "VI 刷新率（超频）; 自动|1500|2200" },
         { CORE_NAME "-astick-deadzone",
-           "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
+           "模拟摇杆盲区（百分比）; 15|20|25|30|0|5|10"},
         { CORE_NAME "-astick-sensitivity",
-           "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|50|55|60|65|70|75|80|85|90|95"},
+           "模拟摇杆灵敏度（百分比）; 100|105|110|115|120|125|130|135|140|145|150|50|55|60|65|70|75|80|85|90|95"},
         { CORE_NAME "-r-cbutton",
-           "Right C Button; C1|C2|C3|C4"},
+           "右侧C键; C1|C2|C3|C4"},
         { CORE_NAME "-l-cbutton",
-           "Left C Button; C2|C3|C4|C1"},
+           "左侧C键; C2|C3|C4|C1"},
         { CORE_NAME "-d-cbutton",
-           "Down C Button; C3|C4|C1|C2"},
+           "下方C键; C3|C4|C1|C2"},
         { CORE_NAME "-u-cbutton",
-           "Up C Button; C4|C1|C2|C3"},
+           "上方C键; C4|C1|C2|C3"},
         { CORE_NAME "-alt-map",
-           "Independent C-button Controls; False|True" },
+           "独立C键控制; False|True" },
         { CORE_NAME "-ForceDisableExtraMem",
-           "Disable Expansion Pak; False|True"},
+           "禁用扩充内存; False|True"},
         { CORE_NAME "-pak1",
-           "Player 1 Pak; memory|rumble|none"},
+           "手柄1扩充包; 记忆卡|振动包|无"},
         { CORE_NAME "-pak2",
-           "Player 2 Pak; none|memory|rumble"},
+           "手柄1扩充包; 无|记忆卡|振动包"},
         { CORE_NAME "-pak3",
-           "Player 3 Pak; none|memory|rumble"},
+           "手柄1扩充包; 无|记忆卡|振动包"},
         { CORE_NAME "-pak4",
-           "Player 4 Pak; none|memory|rumble"},
+           "手柄1扩充包; 无|记忆卡|振动包"},
         { CORE_NAME "-CountPerOp",
-            "Count Per Op; 0|1|2|3" },
+            "每条模拟CPU指令时钟周期数; 0|1|2|3" },
         { NULL, NULL },
     };
 
@@ -646,9 +646,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
     {
         int p1_pak = PLUGIN_NONE;
-        if (!strcmp(pk1var.value, "rumble"))
+        if (!strcmp(pk1var.value, "振动包"))
             p1_pak = PLUGIN_RAW;
-        else if (!strcmp(pk1var.value, "memory"))
+        else if (!strcmp(pk1var.value, "记忆卡"))
             p1_pak = PLUGIN_MEMPAK;
 
         // If controller struct is not initialised yet, set pad_pak_types instead
@@ -663,9 +663,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk2var) && pk2var.value)
     {
         int p2_pak = PLUGIN_NONE;
-        if (!strcmp(pk2var.value, "rumble"))
+        if (!strcmp(pk2var.value, "振动包"))
             p2_pak = PLUGIN_RAW;
-        else if (!strcmp(pk2var.value, "memory"))
+        else if (!strcmp(pk2var.value, "记忆卡"))
             p2_pak = PLUGIN_MEMPAK;
 
         if (controller[1].control)
@@ -678,9 +678,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
     {
         int p3_pak = PLUGIN_NONE;
-        if (!strcmp(pk3var.value, "rumble"))
+        if (!strcmp(pk3var.value, "振动包"))
             p3_pak = PLUGIN_RAW;
-        else if (!strcmp(pk3var.value, "memory"))
+        else if (!strcmp(pk3var.value, "记忆卡"))
             p3_pak = PLUGIN_MEMPAK;
 
         if (controller[2].control)
@@ -693,9 +693,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
     {
         int p4_pak = PLUGIN_NONE;
-        if (!strcmp(pk4var.value, "rumble"))
+        if (!strcmp(pk4var.value, "振动包"))
             p4_pak = PLUGIN_RAW;
-        else if (!strcmp(pk4var.value, "memory"))
+        else if (!strcmp(pk4var.value, "记忆卡"))
             p4_pak = PLUGIN_MEMPAK;
 
         if (controller[3].control)
@@ -788,7 +788,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          bilinearMode = !strcmp(var.value, "3point") ? 0 : 1;
+          bilinearMode = !strcmp(var.value, "3点取样") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-FXAA";
@@ -816,14 +816,14 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFullspeed = !strcmp(var.value, "Original") ? 0 : 1;
+          EnableFullspeed = !strcmp(var.value, "原始") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-virefresh";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          CountPerScanlineOverride = !strcmp(var.value, "Auto") ? 0 : atoi(var.value);
+          CountPerScanlineOverride = !strcmp(var.value, "自动") ? 0 : atoi(var.value);
        }
 
        var.key = CORE_NAME "-NoiseEmulation";
@@ -858,9 +858,9 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "Async"))
+          if (!strcmp(var.value, "异步"))
              EnableCopyColorToRDRAM = 2;
-          else if (!strcmp(var.value, "Sync"))
+          else if (!strcmp(var.value, "同步"))
              EnableCopyColorToRDRAM = 1;
           else
              EnableCopyColorToRDRAM = 0;
@@ -870,9 +870,9 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "Software"))
+          if (!strcmp(var.value, "软件方式"))
              EnableCopyDepthToRDRAM = 2;
-          else if (!strcmp(var.value, "FromMem"))
+          else if (!strcmp(var.value, "从显存拷贝"))
              EnableCopyDepthToRDRAM = 1;
           else
              EnableCopyDepthToRDRAM = 0;
@@ -889,9 +889,9 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "Force"))
+          if (!strcmp(var.value, "强制"))
              CorrectTexrectCoords = 2;
-          else if (!strcmp(var.value, "Auto"))
+          else if (!strcmp(var.value, "自动"))
              CorrectTexrectCoords = 1;
           else
              CorrectTexrectCoords = 0;
@@ -901,7 +901,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          BackgroundMode = !strcmp(var.value, "OnePiece") ? 0 : 1;
+          BackgroundMode = !strcmp(var.value, "整块") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableNativeResTexrects";
@@ -912,11 +912,11 @@ static void update_variables(bool startup)
           {
              enableNativeResTexrects = 0; // NativeResTexrectsMode::ntDisable
           }
-          else if(!strcmp(var.value, "Optimized"))
+          else if(!strcmp(var.value, "优化的"))
           {
              enableNativeResTexrects = 1; // NativeResTexrectsMode::ntOptimized
           }
-          else if(!strcmp(var.value, "Unoptimized"))
+          else if(!strcmp(var.value, "无优化的"))
           {
              enableNativeResTexrects = 2; // NativeResTexrectsMode::ntUnptimized (Note: upstream typo)
           }
@@ -926,17 +926,17 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "Smooth filtering 1"))
+          if (!strcmp(var.value, "平滑滤镜1"))
              txFilterMode = 1;
-          else if (!strcmp(var.value, "Smooth filtering 2"))
+          else if (!strcmp(var.value, "平滑滤镜2"))
              txFilterMode = 2;
-          else if (!strcmp(var.value, "Smooth filtering 3"))
+          else if (!strcmp(var.value, "平滑滤镜3"))
              txFilterMode = 3;
-          else if (!strcmp(var.value, "Smooth filtering 4"))
+          else if (!strcmp(var.value, "平滑滤镜4"))
              txFilterMode = 4;
-          else if (!strcmp(var.value, "Sharp filtering 1"))
+          else if (!strcmp(var.value, "锐化滤镜1"))
              txFilterMode = 5;
-          else if (!strcmp(var.value, "Sharp filtering 2"))
+          else if (!strcmp(var.value, "锐化滤镜2"))
              txFilterMode = 6;
           else
              txFilterMode = 0;
@@ -946,7 +946,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "As Is"))
+          if (!strcmp(var.value, "原始"))
              txEnhancementMode = 1;
           else if (!strcmp(var.value, "X2"))
              txEnhancementMode = 2;
@@ -1058,11 +1058,11 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "pure_interpreter"))
+          if (!strcmp(var.value, "纯解释器"))
              r4300_emumode = EMUMODE_PURE_INTERPRETER;
-          else if (!strcmp(var.value, "cached_interpreter"))
+          else if (!strcmp(var.value, "缓存式解释器"))
              r4300_emumode = EMUMODE_INTERPRETER;
-          else if (!strcmp(var.value, "dynamic_recompiler"))
+          else if (!strcmp(var.value, "动态重编译器"))
              r4300_emumode = EMUMODE_DYNAREC;
        }
 
@@ -1070,7 +1070,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "16:9 adjusted")) {
+          if (!strcmp(var.value, "16:9调整")) {
              AspectRatio = 3;
              retro_screen_aspect = 16.0 / 9.0;
           } else if (!strcmp(var.value, "16:9")) {
@@ -1259,43 +1259,43 @@ static void update_variables(bool startup)
 
         if (var.value)
         {
-           if (!strcmp(var.value, "Filtered"))
+           if (!strcmp(var.value, "全滤镜"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "AA+Blur"))
+           else if (!strcmp(var.value, "抗锯齿+模糊"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(0);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "AA+Dedither"))
+           else if (!strcmp(var.value, "抗锯齿+消除抖动"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(0);
            }
-           else if (!strcmp(var.value, "AA only"))
+           else if (!strcmp(var.value, "仅抗锯齿"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(0);
               angrylion_set_vi_blur(0);
            }
-           else if (!strcmp(var.value, "Unfiltered"))
+           else if (!strcmp(var.value, "无滤镜"))
            {
               angrylion_set_vi(1);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "Depth"))
+           else if (!strcmp(var.value, "深度"))
            {
               angrylion_set_vi(2);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "Coverage"))
+           else if (!strcmp(var.value, "范围"))
            {
               angrylion_set_vi(3);
               angrylion_set_vi_dedither(1);
@@ -1316,11 +1316,11 @@ static void update_variables(bool startup)
 
         if (var.value)
         {
-           if (!strcmp(var.value, "High"))
+           if (!strcmp(var.value, "高"))
               angrylion_set_synclevel(2);
-           else if (!strcmp(var.value, "Medium"))
+           else if (!strcmp(var.value, "中"))
               angrylion_set_synclevel(1);
-           else if (!strcmp(var.value, "Low"))
+           else if (!strcmp(var.value, "低"))
               angrylion_set_synclevel(0);
         }
         else
