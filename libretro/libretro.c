@@ -260,17 +260,17 @@ static void setup_variables(void)
             "(GLN64) FXAA; 0|1" },
 
         { CORE_NAME "-NoiseEmulation",
-            "(GLN64) 噪音模拟; True|False" },
+            "(GLN64) 噪音模拟; 启用|禁用" },
 
         { CORE_NAME "-EnableFBEmulation",
 #ifdef VC
-            "(GLN64) 帧缓冲模拟; False|True" },
+            "(GLN64) 帧缓冲模拟; 禁用|启用" },
 #else
-            "(GLN64) 帧缓冲模拟; True|False" },
+            "(GLN64) 帧缓冲模拟; 启用|禁用" },
 #endif
 
         { CORE_NAME "-EnableLODEmulation",
-            "(GLN64) LOD模拟; True|False" },
+            "(GLN64) LOD模拟; 启用|禁用" },
         { CORE_NAME "-EnableCopyColorToRDRAM",
 #ifndef HAVE_OPENGLES
             "(GLN64) 拷贝色彩缓冲到RDRAM; 异步|同步|关闭" },
@@ -282,33 +282,33 @@ static void setup_variables(void)
         { CORE_NAME "-BackgroundMode",
             "(GLN64) 背景模式; 整块|条带" },
         { CORE_NAME "-EnableHWLighting",
-            "(GLN64) 硬件每像素光影计算; False|True" },
+            "(GLN64) 硬件每像素光影计算; 禁用|启用" },
         { CORE_NAME "-CorrectTexrectCoords",
             "(GLN64) 连续纹理边界坐标; 关闭|自动|强制" },
         { CORE_NAME "-EnableNativeResTexrects",
-            "(GLN64) 原始分辨率2D纹理; Disabled|优化的|无优化的" },
+            "(GLN64) 原始分辨率2D纹理; 禁用|优化的|无优化的" },
 #if defined(HAVE_OPENGLES)
         { CORE_NAME "-EnableLegacyBlending",
-            "(GLN64) 低精度混合模式; True|False" },
+            "(GLN64) 低精度混合模式; 启用|禁用" },
         { CORE_NAME "-EnableFragmentDepthWrite",
-            "(GLN64) GPU着色器深度写入; False|True" },
+            "(GLN64) GPU着色器深度写入; 禁用|启用" },
 #else
         { CORE_NAME "-EnableLegacyBlending",
-            "(GLN64) 低精度混合模式; False|True" },
+            "(GLN64) 低精度混合模式; 禁用|启用" },
         { CORE_NAME "-EnableFragmentDepthWrite",
-            "(GLN64) GPU着色器深度写入; True|False" },
+            "(GLN64) GPU着色器深度写入; 启用|禁用" },
 #endif
 #if !defined(VC) && !defined(HAVE_OPENGLES)
         // Not supported on all GPU's
         { CORE_NAME "-EnableN64DepthCompare",
-            "(GLN64) N64 深度比较; False|True" },
+            "(GLN64) N64 深度比较; 禁用|启用" },
         { CORE_NAME "-EnableShadersStorage",
-            "(GLN64) 缓存GPU着色器; True|False" },
+            "(GLN64) 缓存GPU着色器; 启用|禁用" },
 #endif // !defined(VC) && !defined(HAVE_OPENGLES)
         { CORE_NAME "-EnableTextureCache",
-            "(GLN64) 缓存纹理; True|False" },
+            "(GLN64) 缓存纹理; 启用|禁用" },
         { CORE_NAME "-EnableOverscan",
-            "(GLN64) 过扫描; Enabled|Disabled" },
+            "(GLN64) 过扫描; 启用|禁用" },
         { CORE_NAME "-OverscanTop",
             "(GLN64) 过扫描偏移量（顶部）; " GLN64_OVERSCAN_SCALING },
         { CORE_NAME "-OverscanLeft",
@@ -331,17 +331,17 @@ static void setup_variables(void)
         { CORE_NAME "-txEnhancementMode",
             "(GLN64) 纹理增强; 无|原始|X2|X2SAI|HQ2X|HQ2XS|LQ2X|LQ2XS|HQ4X|2xBRZ|3xBRZ|4xBRZ|5xBRZ|6xBRZ" },
         { CORE_NAME "-txFilterIgnoreBG",
-            "(GLN64) 过滤背景纹理; True|False" },
+            "(GLN64) 过滤背景纹理; 启用|禁用" },
         { CORE_NAME "-txHiresEnable",
-            "(GLN64) 使用高清纹理; False|True" },
+            "(GLN64) 使用高清纹理; 禁用|启用" },
         { CORE_NAME "-txCacheCompression",
-            "(GLN64) 使用高清纹理缓存压缩; True|False" },
+            "(GLN64) 使用高清纹理缓存压缩; 启用|禁用" },
         { CORE_NAME "-txHiresFullAlphaChannel",
-            "(GLN64) 使用高清纹理全部Alpha通道; False|True" },
+            "(GLN64) 使用高清纹理全部Alpha通道; 禁用|启用" },
         { CORE_NAME "-EnableEnhancedTextureStorage",
-            "(GLN64) 使用增强型纹理存储; False|True" },
+            "(GLN64) 使用增强型纹理存储; 禁用|启用" },
         { CORE_NAME "-EnableEnhancedHighResStorage",
-            "(GLN64) 使用增强型高清纹理存储; False|True" },
+            "(GLN64) 使用增强型高清纹理存储; 禁用|启用" },
 #ifdef HAVE_THR_AL
         { CORE_NAME "-angrylion-vioverlay",
             "(AL) VI 覆盖层; 全滤镜|抗锯齿+模糊|抗锯齿+消除抖动|仅抗锯齿|无滤镜|深度|范围" },
@@ -350,13 +350,13 @@ static void setup_variables(void)
         { CORE_NAME "-angrylion-multithread",
             "(AL) 多线程; 全部线程|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|58|59|60|61|62|63" },
         { CORE_NAME "-angrylion-overscan",
-            "(AL) 隐藏过扫描; disabled|enabled" },
+            "(AL) 隐藏过扫描; 禁用|启用" },
 #endif // HAVE_THR_AL
         { CORE_NAME "-FrameDuping",
 #ifdef HAVE_LIBNX
-            "帧重用; True|False" },
+            "帧重用; 启用|禁用" },
 #else
-            "帧重用; False|True" },
+            "帧重用; 禁用|启用" },
 #endif
         { CORE_NAME "-Framerate",
             "帧率控制; 原始|全速" },
@@ -375,9 +375,9 @@ static void setup_variables(void)
         { CORE_NAME "-u-cbutton",
            "上方C键; C4|C1|C2|C3"},
         { CORE_NAME "-alt-map",
-           "独立C键控制; False|True" },
+           "独立C键控制; 禁用|启用" },
         { CORE_NAME "-ForceDisableExtraMem",
-           "禁用扩充内存; False|True"},
+           "禁用扩充内存; 禁用|启用"},
         { CORE_NAME "-pak1",
            "手柄1扩充包; 记忆卡|振动包|无"},
         { CORE_NAME "-pak2",
@@ -809,7 +809,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFrameDuping = !strcmp(var.value, "False") ? 0 : 1;
+          EnableFrameDuping = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-Framerate";
@@ -830,28 +830,28 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableNoiseEmulation = !strcmp(var.value, "False") ? 0 : 1;
+          EnableNoiseEmulation = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableLODEmulation";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableLODEmulation = !strcmp(var.value, "False") ? 0 : 1;
+          EnableLODEmulation = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableFBEmulation";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFBEmulation = !strcmp(var.value, "False") ? 0 : 1;
+          EnableFBEmulation = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableN64DepthCompare";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableN64DepthCompare = !strcmp(var.value, "False") ? 0 : 1;
+          EnableN64DepthCompare = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableCopyColorToRDRAM";
@@ -882,7 +882,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableHWLighting = !strcmp(var.value, "False") ? 0 : 1;
+          EnableHWLighting = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-CorrectTexrectCoords";
@@ -908,7 +908,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if(!strcmp(var.value, "False") || !strcmp(var.value, "Disabled"))
+          if(!strcmp(var.value, "禁用") || !strcmp(var.value, "禁用"))
           {
              enableNativeResTexrects = 0; // NativeResTexrectsMode::ntDisable
           }
@@ -981,28 +981,28 @@ static void update_variables(bool startup)
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
           // "Filter background textures; True|False" (true=filter, false=ignore)
-          txFilterIgnoreBG = !strcmp(var.value, "False") ? 1 : 0;
+          txFilterIgnoreBG = !strcmp(var.value, "禁用") ? 1 : 0;
        }
 
        var.key = CORE_NAME "-txHiresEnable";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          txHiresEnable = !strcmp(var.value, "False") ? 0 : 1;
+          txHiresEnable = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-txCacheCompression";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableTxCacheCompression = !strcmp(var.value, "False") ? 0 : 1;
+          EnableTxCacheCompression = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-txHiresFullAlphaChannel";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          txHiresFullAlphaChannel = !strcmp(var.value, "False") ? 0 : 1;
+          txHiresFullAlphaChannel = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-MaxTxCacheSize";
@@ -1016,42 +1016,42 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          enableLegacyBlending = !strcmp(var.value, "False") ? 0 : 1;
+          enableLegacyBlending = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableFragmentDepthWrite";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFragmentDepthWrite = !strcmp(var.value, "False") ? 0 : 1;
+          EnableFragmentDepthWrite = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableShadersStorage";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableShadersStorage = !strcmp(var.value, "False") ? 0 : 1;
+          EnableShadersStorage = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableTextureCache";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableTextureCache = !strcmp(var.value, "False") ? 0 : 1;
+          EnableTextureCache = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableEnhancedTextureStorage";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableEnhancedTextureStorage = !strcmp(var.value, "False") ? 0 : 1;
+          EnableEnhancedTextureStorage = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableEnhancedHighResStorage";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableEnhancedHighResStorage = !strcmp(var.value, "False") ? 0 : 1;
+          EnableEnhancedHighResStorage = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-cpucore";
@@ -1203,7 +1203,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableOverscan = !strcmp(var.value, "Enabled") ? 1 : 0;
+          EnableOverscan = !strcmp(var.value, "启用") ? 1 : 0;
        }
 
        var.key = CORE_NAME "-OverscanTop";
@@ -1238,14 +1238,14 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          alternate_mapping = !strcmp(var.value, "False") ? 0 : 1;
+          alternate_mapping = !strcmp(var.value, "禁用") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-ForceDisableExtraMem";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          ForceDisableExtraMem = !strcmp(var.value, "False") ? 0 : 1;
+          ForceDisableExtraMem = !strcmp(var.value, "禁用") ? 0 : 1;
        }
     }
 
@@ -1346,9 +1346,9 @@ static void update_variables(bool startup)
 
         if (var.value)
         {
-           if (!strcmp(var.value, "enabled"))
+           if (!strcmp(var.value, "启用"))
               angrylion_set_overscan(1);
-           else if (!strcmp(var.value, "disabled"))
+           else if (!strcmp(var.value, "禁用"))
               angrylion_set_overscan(0);
         }
         else
