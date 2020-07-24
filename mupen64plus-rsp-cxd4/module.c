@@ -90,12 +90,12 @@ EXPORT u32 CALL API_PREFIX(DoRspCycles)(u32 cycles)
 
     task_type = 0x00000000
 #ifdef USE_CLIENT_ENDIAN
-      | *((pi32)(PDMEM + 0x000FC0U))
+      | *((pi32)(DMEM + 0x000FC0U))
 #else
-      | (u32)PDMEM[0xFC0] << 24
-      | (u32)PDMEM[0xFC1] << 16
-      | (u32)PDMEM[0xFC2] <<  8
-      | (u32)PDMEM[0xFC3] <<  0
+      | (u32)DMEM[0xFC0] << 24
+      | (u32)DMEM[0xFC1] << 16
+      | (u32)DMEM[0xFC2] <<  8
+      | (u32)DMEM[0xFC3] <<  0
 #endif
     ;
     switch (task_type) {
@@ -104,7 +104,7 @@ EXPORT u32 CALL API_PREFIX(DoRspCycles)(u32 cycles)
         if (CFG_HLE_GFX == 0)
             break;
 
-        if (*(pi32)(PDMEM + 0xFF0) == 0x00000000)
+        if (*(pi32)(DMEM + 0xFF0) == 0x00000000)
             break; /* Resident Evil 2, null task pointers */
         if (GET_RSP_INFO(ProcessDlistList) == NULL)
             { /* branch */ }
@@ -239,8 +239,8 @@ EXPORT void CALL API_PREFIX(InitiateRSP)(RSP_INFO Rsp_Info, pu32 CycleCount)
     DRAM = GET_RSP_INFO(RDRAM);
     if (Rsp_Info.DMEM == Rsp_Info.IMEM) /* usually dummy RSP data for testing */
         return; /* DMA is not executed just because plugin initiates. */
-    PDMEM = GET_RSP_INFO(DMEM);
-    PIMEM = GET_RSP_INFO(IMEM);
+    DMEM = GET_RSP_INFO(DMEM);
+    IMEM = GET_RSP_INFO(IMEM);
 
     CR[0x0] = &GET_RCP_REG(SP_MEM_ADDR_REG);
     CR[0x1] = &GET_RCP_REG(SP_DRAM_ADDR_REG);
@@ -317,7 +317,7 @@ NOINLINE void export_data_cache(void)
 
     DMEM_swapped = my_calloc(4096, 1);
     for (i = 0; i < 4096; i++)
-        DMEM_swapped[i] = PDMEM[BES(i)];
+        DMEM_swapped[i] = DMEM[BES(i)];
     out = my_fopen("rcpcache.dhex", "wb");
     my_fwrite(DMEM_swapped, 16, 4096 / 16, out);
     my_fclose(out);
@@ -333,7 +333,7 @@ NOINLINE void export_instruction_cache(void)
 
     IMEM_swapped = my_calloc(4096, 1);
     for (i = 0; i < 4096; i++)
-        IMEM_swapped[i] = PIMEM[BES(i)];
+        IMEM_swapped[i] = IMEM[BES(i)];
     out = my_fopen("rcpcache.ihex", "wb");
     my_fwrite(IMEM_swapped, 16, 4096 / 16, out);
     my_fclose(out);
