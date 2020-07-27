@@ -3,6 +3,12 @@ FORCE_GLES ?= 0
 FORCE_GLES3 ?= 0
 LLE ?= 0
 HAVE_PARALLEL_RSP ?= 0
+HAVE_PARALLEL_RDP ?= 0
+
+SYSTEM_MINIZIP ?= 0
+SYSTEM_LIBPNG ?= 0
+SYSTEM_XXHASH ?= 0
+SYSTEM_ZLIB ?= 0
 
 HAVE_LTCG ?= 0
 DYNAFLAGS :=
@@ -382,7 +388,7 @@ else ifneq (,$(findstring android,$(platform)))
    else
       GL_LIB := -lGLESv2
       GLES = 1
-      TARGET := $(TARGET_NAME)_libretro_android.so
+      TARGET := $(TARGET_NAME)_gles2_libretro_android.so
    endif
    CPUFLAGS += -DANDROID -DEGL_EGLEXT_PROTOTYPES
    COREFLAGS += -DOS_LINUX
@@ -444,6 +450,7 @@ else
    endif
 
    HAVE_PARALLEL_RSP = 1
+   HAVE_PARALLEL_RDP = 1
    HAVE_THR_AL = 1
    LLE = 1
    COREFLAGS += -DOS_WINDOWS -DMINGW
@@ -482,6 +489,9 @@ ifneq ($(platform), libnx)
 endif
    CXXFLAGS += -fvisibility-inlines-hidden
 endif
+
+# Use -fcommon
+CPUOPTS += -fcommon
 
 # set C/C++ standard to use
 CFLAGS += -std=gnu11 -D_CRT_SECURE_NO_WARNINGS

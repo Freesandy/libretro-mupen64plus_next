@@ -1,20 +1,20 @@
-﻿/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus-Next - libretro.c                                       *
- *   Copyright (C) 2020 M4xw <m4x@m4xw.net                               *
- *                                                                    *
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *   Mupen64plus-Next - libretro.c                                         *
+ *   Copyright (C) 2020 M4xw <m4x@m4xw.net>                                *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                 *
- *                                                                    *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
  *   This program is distributed in the hope that it will be useful,       *
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- *   GNU General Public License for more details.                         *
- *                                                                    *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
  *   You should have received a copy of the GNU General Public License     *
- *   along with this program; if not, write to the                        *
- *   Free Software Foundation, Inc.,                                     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -24,6 +24,8 @@
 
 #include "libretro.h"
 #include "libretro_private.h"
+#include "libretro_core_options.h"
+
 #include "GLideN64_libretro.h"
 #include "mupen64plus-next_common.h"
 
@@ -32,7 +34,7 @@
 #ifdef HAVE_LIBNX
 #include <switch.h>
 #endif
-
+#include <pthread.h>
 #include <glsm/glsmsym.h>
 
 #include "api/m64p_frontend.h"
@@ -92,27 +94,12 @@ struct rgba
 extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 #endif // HAVE_THR_AL
 
-// Option entries
-#define OPTION_ENTRY_RDP_GLIDEN64 "gliden64"
-#define OPTION_ENTRY_RSP_HLE "hle"
+#if defined(HAVE_PARALLEL_RDP)
+#include "../mupen64plus-video-paraLLEl/parallel.h"
 
-#ifdef HAVE_THR_AL
-#define OPTION_ENTRY_RDP_ANGRYLION "|angrylion"
-#else
-#define OPTION_ENTRY_RDP_ANGRYLION ""
-#endif // HAVE_THR_AL
-
-#ifdef HAVE_PARALLEL_RSP
-#define OPTION_ENTRY_RSP_PARALLEL "|parallel"
-#else
-#define OPTION_ENTRY_RSP_PARALLEL ""
-#endif // HAVE_PARALLEL_RSP
-
-#ifdef HAVE_LLE
-#define OPTION_ENTRY_RSP_CXD4 "|cxd4"
-#else
-#define OPTION_ENTRY_RSP_CXD4 ""
-#endif // HAVE_LLE
+static struct retro_hw_render_callback hw_render;
+static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_negotiation;
+#endif
 
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
@@ -123,6 +110,7 @@ retro_input_poll_t poll_cb = NULL;
 retro_input_state_t input_cb = NULL;
 retro_audio_sample_batch_t audio_batch_cb = NULL;
 retro_environment_t environ_cb = NULL;
+retro_environment_t environ_clear_thread_waits_cb = NULL;
 
 struct retro_rumble_interface rumble;
 
@@ -162,8 +150,14 @@ float retro_screen_aspect = 4.0 / 3.0;
 
 char* retro_dd_path_img;
 char* retro_dd_path_rom;
+bool retro_savestate_complete = false;
+int  retro_savestate_result = 0;
 
 uint32_t bilinearMode = 0;
+uint32_t EnableHybridFilter = 0;
+uint32_t EnableDitheringPattern = 0;
+uint32_t RDRAMImageDitheringMode = 0;
+uint32_t EnableDitheringQuantization = 0;
 uint32_t EnableHWLighting = 0;
 uint32_t CorrectTexrectCoords = 0;
 uint32_t enableNativeResTexrects = 0;
@@ -184,18 +178,16 @@ uint32_t EnableShadersStorage = 0;
 uint32_t EnableTextureCache = 0;
 uint32_t EnableFBEmulation = 0;
 uint32_t EnableFrameDuping = 0;
-uint32_t EnableNoiseEmulation = 0;
 uint32_t EnableLODEmulation = 0;
-uint32_t EnableFullspeed = 0;
-uint32_t CountPerOp = 0;
-uint32_t CountPerScanlineOverride = 0;
 uint32_t BackgroundMode = 0; // 0 is bgOnePiece
-uint32_t EnableEnhancedTextureStorage;
-uint32_t EnableEnhancedHighResStorage;
+uint32_t EnableEnhancedTextureStorage = 0;
+uint32_t EnableHiResAltCRC = 0;
+uint32_t EnableEnhancedHighResStorage = 0;
 uint32_t EnableTxCacheCompression = 0;
-uint32_t ForceDisableExtraMem = 0;
 uint32_t EnableNativeResFactor = 0;
 uint32_t EnableN64DepthCompare = 0;
+uint32_t EnableThreadedRenderer = 0;
+uint32_t EnableCopyAuxToRDRAM = 0;
 
 // Overscan options
 #define GLN64_OVERSCAN_SCALING "0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50"
@@ -205,9 +197,18 @@ uint32_t OverscanLeft = 0;
 uint32_t OverscanRight = 0;
 uint32_t OverscanBottom = 0;
 
+uint32_t EnableFullspeed = 0;
+uint32_t CountPerOp = 0;
+uint32_t CountPerScanlineOverride = 0;
+uint32_t ForceDisableExtraMem = 0;
+uint32_t IgnoreTLBExceptions = 0;
+
 extern struct device g_dev;
 extern unsigned int r4300_emumode;
 extern struct cheat_ctx g_cheat_ctx;
+
+static bool emuThreadRunning = false;
+static pthread_t emuThread;
 
 // after the controller's CONTROL* member has been assigned we can update
 // them straight from here...
@@ -233,164 +234,6 @@ extern m64p_rom_header ROM_HEADER;
 
 static void setup_variables(void)
 {
-    struct retro_variable variables[] = {
-        { CORE_NAME "-cpucore",
-#ifdef DYNAREC
-            "CPU内核; 动态重编译器|缓存式解释器|纯解释器" },
-#else
-            "CPU内核; 缓存式解释器|纯解释器" },
-#endif
-        { CORE_NAME "-rdp-plugin",
-            "RDP模式; " OPTION_ENTRY_RDP_GLIDEN64 OPTION_ENTRY_RDP_ANGRYLION },
-        { CORE_NAME "-rsp-plugin",
-            "RSP模式; " OPTION_ENTRY_RSP_HLE OPTION_ENTRY_RSP_PARALLEL OPTION_ENTRY_RSP_CXD4 },
-        { CORE_NAME "-43screensize",
-            "(GLN64) 4:3分辨率; 640x480|320x240|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2560x1920|2880x2160|3200x2400|3520x2640|3840x2880" },
-        { CORE_NAME "-169screensize",
-            "(GLN64) 16:9分辨率; 960x540|640x360|1280x720|1920x1080|2560x1440|3840x2160|4096x2160|7680x4320" },
-        { CORE_NAME "-aspect",
-            "(GLN64) 宽高比; 4:3|16:9|16:9调整" },
-        { CORE_NAME "-BilinearMode",
-            "(GLN64) 双线性过滤模式; 标准|3点取样" },
-#ifndef HAVE_OPENGLES2
-        { CORE_NAME "-MultiSampling",
-            "(GLN64) MSAA等级; 0|2|4|8|16" },
-#endif
-        { CORE_NAME "-FXAA",
-            "(GLN64) FXAA; 0|1" },
-
-        { CORE_NAME "-NoiseEmulation",
-            "(GLN64) 噪音模拟; 启用|禁用" },
-
-        { CORE_NAME "-EnableFBEmulation",
-#ifdef VC
-            "(GLN64) 帧缓冲模拟; 禁用|启用" },
-#else
-            "(GLN64) 帧缓冲模拟; 启用|禁用" },
-#endif
-
-        { CORE_NAME "-EnableLODEmulation",
-            "(GLN64) LOD模拟; 启用|禁用" },
-        { CORE_NAME "-EnableCopyColorToRDRAM",
-#ifndef HAVE_OPENGLES
-            "(GLN64) 拷贝色彩缓冲到RDRAM; 异步|同步|关闭" },
-#else
-            "(GLN64) 拷贝色彩缓冲到RDRAM; 关闭|异步|同步" },
-#endif
-        { CORE_NAME "-EnableCopyDepthToRDRAM",
-            "(GLN64) RDRAM深度缓冲; 软件方式|从显存拷贝|关闭" },
-        { CORE_NAME "-BackgroundMode",
-            "(GLN64) 背景模式; 整块|条带" },
-        { CORE_NAME "-EnableHWLighting",
-            "(GLN64) 硬件每像素光影计算; 禁用|启用" },
-        { CORE_NAME "-CorrectTexrectCoords",
-            "(GLN64) 连续纹理边界坐标; 关闭|自动|强制" },
-        { CORE_NAME "-EnableNativeResTexrects",
-            "(GLN64) 原始分辨率2D纹理; 禁用|优化的|无优化的" },
-#if defined(HAVE_OPENGLES)
-        { CORE_NAME "-EnableLegacyBlending",
-            "(GLN64) 低精度混合模式; 启用|禁用" },
-        { CORE_NAME "-EnableFragmentDepthWrite",
-            "(GLN64) GPU着色器深度写入; 禁用|启用" },
-#else
-        { CORE_NAME "-EnableLegacyBlending",
-            "(GLN64) 低精度混合模式; 禁用|启用" },
-        { CORE_NAME "-EnableFragmentDepthWrite",
-            "(GLN64) GPU着色器深度写入; 启用|禁用" },
-#endif
-#if !defined(VC) && !defined(HAVE_OPENGLES)
-        // Not supported on all GPU's
-        { CORE_NAME "-EnableN64DepthCompare",
-            "(GLN64) N64 深度比较; 禁用|启用" },
-        { CORE_NAME "-EnableShadersStorage",
-            "(GLN64) 缓存GPU着色器; 启用|禁用" },
-#endif // !defined(VC) && !defined(HAVE_OPENGLES)
-        { CORE_NAME "-EnableTextureCache",
-            "(GLN64) 缓存纹理; 启用|禁用" },
-        { CORE_NAME "-EnableOverscan",
-            "(GLN64) 过扫描; 启用|禁用" },
-        { CORE_NAME "-OverscanTop",
-            "(GLN64) 过扫描偏移量（顶部）; " GLN64_OVERSCAN_SCALING },
-        { CORE_NAME "-OverscanLeft",
-            "(GLN64) 过扫描偏移量（左边）; " GLN64_OVERSCAN_SCALING },
-        { CORE_NAME "-OverscanRight",
-            "(GLN64) 过扫描偏移量（右边）; " GLN64_OVERSCAN_SCALING },
-        { CORE_NAME "-OverscanBottom",
-            "(GLN64) 过扫描偏移量（底部）; " GLN64_OVERSCAN_SCALING },
-
-        { CORE_NAME "-MaxTxCacheSize",
-#if defined(VC)
-            "(GLN64) 最大纹理缓存大小; 1500|8000|4000" },
-#elif defined(HAVE_LIBNX)
-            "(GLN64) 最大纹理缓存大小; 4000|1500|8000" },
-#else
-            "(GLN64) 最大纹理缓存大小; 8000|4000|1500" },
-#endif
-        { CORE_NAME "-txFilterMode",
-            "(GLN64) 纹理滤镜; 无|平滑滤镜1|平滑滤镜2|平滑滤镜3|平滑滤镜4|锐化滤镜1|锐化滤镜2" },
-        { CORE_NAME "-txEnhancementMode",
-            "(GLN64) 纹理增强; 无|原始|X2|X2SAI|HQ2X|HQ2XS|LQ2X|LQ2XS|HQ4X|2xBRZ|3xBRZ|4xBRZ|5xBRZ|6xBRZ" },
-        { CORE_NAME "-txFilterIgnoreBG",
-            "(GLN64) 过滤背景纹理; 启用|禁用" },
-        { CORE_NAME "-txHiresEnable",
-            "(GLN64) 使用高清纹理; 禁用|启用" },
-        { CORE_NAME "-txCacheCompression",
-            "(GLN64) 使用高清纹理缓存压缩; 启用|禁用" },
-        { CORE_NAME "-txHiresFullAlphaChannel",
-            "(GLN64) 使用高清纹理全部Alpha通道; 禁用|启用" },
-        { CORE_NAME "-EnableEnhancedTextureStorage",
-            "(GLN64) 使用增强型纹理存储; 禁用|启用" },
-        { CORE_NAME "-EnableEnhancedHighResStorage",
-            "(GLN64) 使用增强型高清纹理存储; 禁用|启用" },
-#ifdef HAVE_THR_AL
-        { CORE_NAME "-angrylion-vioverlay",
-            "(AL) VI 覆盖层; 全滤镜|抗锯齿+模糊|抗锯齿+消除抖动|仅抗锯齿|无滤镜|深度|范围" },
-        { CORE_NAME "-angrylion-sync",
-            "(AL) 线程同步级别; 低|中|高" },
-        { CORE_NAME "-angrylion-multithread",
-            "(AL) 多线程; 全部线程|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|58|59|60|61|62|63" },
-        { CORE_NAME "-angrylion-overscan",
-            "(AL) 隐藏过扫描; 禁用|启用" },
-#endif // HAVE_THR_AL
-        { CORE_NAME "-FrameDuping",
-#ifdef HAVE_LIBNX
-            "帧重用; 启用|禁用" },
-#else
-            "帧重用; 禁用|启用" },
-#endif
-        { CORE_NAME "-Framerate",
-            "帧率控制; 原始|全速" },
-        { CORE_NAME "-virefresh",
-            "VI 刷新率（超频）; 自动|1500|2200" },
-        { CORE_NAME "-astick-deadzone",
-           "模拟摇杆盲区（百分比）; 15|20|25|30|0|5|10"},
-        { CORE_NAME "-astick-sensitivity",
-           "模拟摇杆灵敏度（百分比）; 100|105|110|115|120|125|130|135|140|145|150|50|55|60|65|70|75|80|85|90|95"},
-        { CORE_NAME "-r-cbutton",
-           "右侧C键; C1|C2|C3|C4"},
-        { CORE_NAME "-l-cbutton",
-           "左侧C键; C2|C3|C4|C1"},
-        { CORE_NAME "-d-cbutton",
-           "下方C键; C3|C4|C1|C2"},
-        { CORE_NAME "-u-cbutton",
-           "上方C键; C4|C1|C2|C3"},
-        { CORE_NAME "-alt-map",
-           "独立C键控制; 禁用|启用" },
-        { CORE_NAME "-ForceDisableExtraMem",
-           "禁用扩充内存; 禁用|启用"},
-        { CORE_NAME "-pak1",
-           "手柄1扩充包; 记忆卡|振动包|无"},
-        { CORE_NAME "-pak2",
-           "手柄1扩充包; 无|记忆卡|振动包"},
-        { CORE_NAME "-pak3",
-           "手柄1扩充包; 无|记忆卡|振动包"},
-        { CORE_NAME "-pak4",
-           "手柄1扩充包; 无|记忆卡|振动包"},
-        { CORE_NAME "-CountPerOp",
-            "每条模拟CPU指令时钟周期数; 0|1|2|3" },
-        { NULL, NULL },
-    };
-
     static const struct retro_controller_description port[] = {
         { "Controller", RETRO_DEVICE_JOYPAD },
         { "RetroPad", RETRO_DEVICE_JOYPAD },
@@ -404,14 +247,22 @@ static void setup_variables(void)
         { 0, 0 }
     };
 
-    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+    libretro_set_core_options(environ_cb);
     environ_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
 }
 
+static void n64StateCallback(void *Context, m64p_core_param param_type, int new_value)
+{
+    if(param_type == M64CORE_STATE_LOADCOMPLETE || param_type == M64CORE_STATE_SAVECOMPLETE)
+    {
+        retro_savestate_complete = true;
+        retro_savestate_result = new_value;
+    }
+}
 
 static bool emu_step_load_data()
 {
-    m64p_error ret = CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0);
+    m64p_error ret = CoreStartup(FRONTEND_API_VERSION, ".", ".", NULL, n64DebugCallback, 0, n64StateCallback);
     if(ret && log_cb)
         log_cb(RETRO_LOG_ERROR, CORE_NAME ": failed to initialize core (err=%i)\n", ret);
 
@@ -456,16 +307,45 @@ static void emu_step_initialize(void)
     plugin_connect_all();
 }
 
-static void EmuThreadFunction(void)
+static void* EmuThreadFunction(void* param)
 {
     log_cb(RETRO_LOG_DEBUG, CORE_NAME ": [EmuThread] M64CMD_EXECUTE\n");
 
     initializing = false;
+
+    // Runs until CMD_STOP
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
+
+    if(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer)
+    {
+        // Unset
+        emuThreadRunning = false;
+    }
+
+    return NULL;
 }
 
-void reinit_gfx_plugin(void)
+static void reinit_gfx_plugin(void)
 {
+#ifdef HAVE_PARALLEL_RDP
+    if (current_rdp_type == RDP_PLUGIN_PARALLEL)
+    {
+        const struct retro_hw_render_interface_vulkan *vulkan;
+        if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
+        {
+            if (log_cb)
+                log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.\n");
+            vulkan = NULL;
+        }
+        parallel_set_vulkan_interface(vulkan);
+
+        // On first context init, the ROM is not loaded yet, so defer initialization of the plugin.
+        // On context destroy/resets however, just initialize right away.
+        if (!first_context_reset)
+            parallel_init();
+    }
+#endif
+
     if(first_context_reset)
     {
         first_context_reset = false;
@@ -546,23 +426,15 @@ void retro_set_environment(retro_environment_t cb)
     };
 
     environ_cb(RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO, (void*)subsystems);
+    environ_cb(RETRO_ENVIRONMENT_GET_CLEAR_ALL_THREAD_WAITS_CB, &environ_clear_thread_waits_cb);
     
     setup_variables();
 }
 
 void retro_get_system_info(struct retro_system_info *info)
 {
-#if defined(HAVE_OPENGLES2)
-    info->library_name = "Mupen64Plus-Next GLES2";
-#elif defined(HAVE_OPENGLES3)
-    info->library_name = "Mupen64Plus-Next GLES3";
-#else
-    info->library_name = "Mupen64Plus-Next OpenGL";
-#endif
-#ifndef GIT_VERSION
-#define GIT_VERSION " git"
-#endif
-    info->library_version = "2.0.5" GIT_VERSION;
+    info->library_name = "Mupen64Plus-Next";
+    info->library_version = "2.1" FLAVOUR_VERSION GIT_VERSION;
     info->valid_extensions = "n64|v64|z64|bin|u1";
     info->need_fullpath = false;
     info->block_extract = false;
@@ -575,6 +447,10 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
     info->geometry.max_width    = retro_screen_width;
     info->geometry.max_height   = retro_screen_height;
     info->geometry.aspect_ratio = retro_screen_aspect;
+#ifdef HAVE_PARALLEL_RDP
+    if (current_rdp_type == RDP_PLUGIN_PARALLEL)
+        parallel_get_geometry(&info->geometry);
+#endif
     info->timing.fps = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);
     info->timing.sample_rate = 44100.0;
 }
@@ -624,16 +500,23 @@ void retro_init(void)
 
     environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
     environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
-    initializing = true;
+    if(!(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer))
+    {
+        initializing = true;
 
-    retro_thread = co_active();
-    game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+        retro_thread = co_active();
+        game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+    }
 }
 
 void retro_deinit(void)
-{
-    CoreDoCommand(M64CMD_STOP, 0, NULL);
-    co_switch(game_thread); /* Let the core thread finish */
+{    
+    if(!(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer))
+    {
+        CoreDoCommand(M64CMD_STOP, 0, NULL);
+        co_switch(game_thread); /* Let the core thread finish */
+    }
+
     deinit_audio_libretro();
 
     if (perf_cb.perf_log)
@@ -646,9 +529,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
     {
         int p1_pak = PLUGIN_NONE;
-        if (!strcmp(pk1var.value, "振动包"))
+        if (!strcmp(pk1var.value, "rumble"))
             p1_pak = PLUGIN_RAW;
-        else if (!strcmp(pk1var.value, "记忆卡"))
+        else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
 
         // If controller struct is not initialised yet, set pad_pak_types instead
@@ -663,9 +546,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk2var) && pk2var.value)
     {
         int p2_pak = PLUGIN_NONE;
-        if (!strcmp(pk2var.value, "振动包"))
+        if (!strcmp(pk2var.value, "rumble"))
             p2_pak = PLUGIN_RAW;
-        else if (!strcmp(pk2var.value, "记忆卡"))
+        else if (!strcmp(pk2var.value, "memory"))
             p2_pak = PLUGIN_MEMPAK;
 
         if (controller[1].control)
@@ -678,9 +561,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
     {
         int p3_pak = PLUGIN_NONE;
-        if (!strcmp(pk3var.value, "振动包"))
+        if (!strcmp(pk3var.value, "rumble"))
             p3_pak = PLUGIN_RAW;
-        else if (!strcmp(pk3var.value, "记忆卡"))
+        else if (!strcmp(pk3var.value, "memory"))
             p3_pak = PLUGIN_MEMPAK;
 
         if (controller[2].control)
@@ -693,9 +576,9 @@ void update_controllers()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
     {
         int p4_pak = PLUGIN_NONE;
-        if (!strcmp(pk4var.value, "振动包"))
+        if (!strcmp(pk4var.value, "rumble"))
             p4_pak = PLUGIN_RAW;
-        else if (!strcmp(pk4var.value, "记忆卡"))
+        else if (!strcmp(pk4var.value, "memory"))
             p4_pak = PLUGIN_MEMPAK;
 
         if (controller[3].control)
@@ -711,6 +594,15 @@ static void update_variables(bool startup)
 
     if (startup)
     {
+       bool save_state_in_background = true;
+       //environ_cb(RETRO_ENVIRONMENT_SET_SAVE_STATE_IN_BACKGROUND, &save_state_in_background);
+
+       if(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer)
+       {
+          unsigned poll_type_early      = 1; /* POLL_TYPE_EARLY */
+          environ_cb(RETRO_ENVIRONMENT_POLL_TYPE_OVERRIDE, &poll_type_early);
+       }
+
        var.key = CORE_NAME "-rdp-plugin";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -722,6 +614,10 @@ static void update_variables(bool startup)
           else if (!strcmp(var.value, "angrylion"))
           {
              plugin_connect_rdp_api(RDP_PLUGIN_ANGRYLION);
+          }
+          else if (!strcmp(var.value, "parallel"))
+          {
+             plugin_connect_rdp_api(RDP_PLUGIN_PARALLEL);
           }
        }
        else
@@ -736,7 +632,7 @@ static void update_variables(bool startup)
           if (!strcmp(var.value, "hle"))
           {
              // If we use angrylion with hle, we will force parallel if available!
-             if(current_rdp_type != RDP_PLUGIN_ANGRYLION)
+             if(current_rdp_type != RDP_PLUGIN_ANGRYLION && current_rdp_type != RDP_PLUGIN_PARALLEL)
              {
                 plugin_connect_rsp_api(RSP_PLUGIN_HLE);
              }
@@ -766,7 +662,7 @@ static void update_variables(bool startup)
        }
        else
        {
-          if(current_rdp_type != RDP_PLUGIN_ANGRYLION)
+          if(current_rdp_type != RDP_PLUGIN_ANGRYLION && current_rdp_type != RDP_PLUGIN_PARALLEL)
           {
                 plugin_connect_rsp_api(RSP_PLUGIN_HLE);
           }
@@ -784,13 +680,55 @@ static void update_variables(bool startup)
           }
        }
 
+       var.key = CORE_NAME "-ThreadedRenderer";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          EnableThreadedRenderer = !strcmp(var.value, "True") ? 1 : 0;
+       }
+
        var.key = CORE_NAME "-BilinearMode";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          bilinearMode = !strcmp(var.value, "3点取样") ? 0 : 1;
+          bilinearMode = !strcmp(var.value, "3point") ? 0 : 1;
        }
 
+       var.key = CORE_NAME "-HybridFilter";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          EnableHybridFilter = !strcmp(var.value, "False") ? 0 : 1;
+       }
+
+       var.key = CORE_NAME "-DitheringPattern";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          EnableDitheringPattern = !strcmp(var.value, "False") ? 0 : 1;
+       }
+
+       var.key = CORE_NAME "-DitheringQuantization";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          EnableDitheringQuantization = !strcmp(var.value, "False") ? 0 : 1;
+       }
+       
+       var.key = CORE_NAME "-RDRAMImageDitheringMode";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          if (!strcmp(var.value, "BlueNoise"))
+             RDRAMImageDitheringMode = 2; // bdmBlueNoise
+          else if (!strcmp(var.value, "MagicSquare"))
+             RDRAMImageDitheringMode = 1; // bdmMagicSquare
+          else if (!strcmp(var.value, "Bayer"))
+             RDRAMImageDitheringMode = 1; // bdmBayer
+          else
+             RDRAMImageDitheringMode = 0; // bdmDisable
+       }
+       
        var.key = CORE_NAME "-FXAA";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -809,58 +747,58 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFrameDuping = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableFrameDuping = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-Framerate";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFullspeed = !strcmp(var.value, "原始") ? 0 : 1;
+          EnableFullspeed = !strcmp(var.value, "Original") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-virefresh";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          CountPerScanlineOverride = !strcmp(var.value, "自动") ? 0 : atoi(var.value);
-       }
-
-       var.key = CORE_NAME "-NoiseEmulation";
-       var.value = NULL;
-       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-       {
-          EnableNoiseEmulation = !strcmp(var.value, "禁用") ? 0 : 1;
+          CountPerScanlineOverride = !strcmp(var.value, "Auto") ? 0 : atoi(var.value);
        }
 
        var.key = CORE_NAME "-EnableLODEmulation";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableLODEmulation = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableLODEmulation = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableFBEmulation";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFBEmulation = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableFBEmulation = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableN64DepthCompare";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableN64DepthCompare = !strcmp(var.value, "禁用") ? 0 : 1;
+          if (!strcmp(var.value, "Compatible"))
+             EnableN64DepthCompare = 2; // dcCompatible
+          else if (!strcmp(var.value, "True"))
+             EnableN64DepthCompare = 1; // dcFast
+          else
+             EnableN64DepthCompare = 0; // dcDisable
        }
 
        var.key = CORE_NAME "-EnableCopyColorToRDRAM";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "异步"))
+          if (!strcmp(var.value, "TripleBuffer"))
+             EnableCopyColorToRDRAM = 3;
+          else if (!strcmp(var.value, "Async"))
              EnableCopyColorToRDRAM = 2;
-          else if (!strcmp(var.value, "同步"))
+          else if (!strcmp(var.value, "Sync"))
              EnableCopyColorToRDRAM = 1;
           else
              EnableCopyColorToRDRAM = 0;
@@ -870,9 +808,9 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "软件方式"))
+          if (!strcmp(var.value, "Software"))
              EnableCopyDepthToRDRAM = 2;
-          else if (!strcmp(var.value, "从显存拷贝"))
+          else if (!strcmp(var.value, "FromMem"))
              EnableCopyDepthToRDRAM = 1;
           else
              EnableCopyDepthToRDRAM = 0;
@@ -882,16 +820,16 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableHWLighting = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableHWLighting = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-CorrectTexrectCoords";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "强制"))
+          if (!strcmp(var.value, "Force"))
              CorrectTexrectCoords = 2;
-          else if (!strcmp(var.value, "自动"))
+          else if (!strcmp(var.value, "Auto"))
              CorrectTexrectCoords = 1;
           else
              CorrectTexrectCoords = 0;
@@ -901,22 +839,22 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          BackgroundMode = !strcmp(var.value, "整块") ? 0 : 1;
+          BackgroundMode = !strcmp(var.value, "OnePiece") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableNativeResTexrects";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if(!strcmp(var.value, "禁用") || !strcmp(var.value, "禁用"))
+          if(!strcmp(var.value, "False") || !strcmp(var.value, "Disabled"))
           {
              enableNativeResTexrects = 0; // NativeResTexrectsMode::ntDisable
           }
-          else if(!strcmp(var.value, "优化的"))
+          else if(!strcmp(var.value, "Optimized"))
           {
              enableNativeResTexrects = 1; // NativeResTexrectsMode::ntOptimized
           }
-          else if(!strcmp(var.value, "无优化的"))
+          else if(!strcmp(var.value, "Unoptimized"))
           {
              enableNativeResTexrects = 2; // NativeResTexrectsMode::ntUnptimized (Note: upstream typo)
           }
@@ -926,17 +864,17 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "平滑滤镜1"))
+          if (!strcmp(var.value, "Smooth filtering 1"))
              txFilterMode = 1;
-          else if (!strcmp(var.value, "平滑滤镜2"))
+          else if (!strcmp(var.value, "Smooth filtering 2"))
              txFilterMode = 2;
-          else if (!strcmp(var.value, "平滑滤镜3"))
+          else if (!strcmp(var.value, "Smooth filtering 3"))
              txFilterMode = 3;
-          else if (!strcmp(var.value, "平滑滤镜4"))
+          else if (!strcmp(var.value, "Smooth filtering 4"))
              txFilterMode = 4;
-          else if (!strcmp(var.value, "锐化滤镜1"))
+          else if (!strcmp(var.value, "Sharp filtering 1"))
              txFilterMode = 5;
-          else if (!strcmp(var.value, "锐化滤镜2"))
+          else if (!strcmp(var.value, "Sharp filtering 2"))
              txFilterMode = 6;
           else
              txFilterMode = 0;
@@ -946,7 +884,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "原始"))
+          if (!strcmp(var.value, "As Is"))
              txEnhancementMode = 1;
           else if (!strcmp(var.value, "X2"))
              txEnhancementMode = 2;
@@ -981,28 +919,28 @@ static void update_variables(bool startup)
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
           // "Filter background textures; True|False" (true=filter, false=ignore)
-          txFilterIgnoreBG = !strcmp(var.value, "禁用") ? 1 : 0;
+          txFilterIgnoreBG = !strcmp(var.value, "False") ? 1 : 0;
        }
 
        var.key = CORE_NAME "-txHiresEnable";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          txHiresEnable = !strcmp(var.value, "禁用") ? 0 : 1;
+          txHiresEnable = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-txCacheCompression";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableTxCacheCompression = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableTxCacheCompression = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-txHiresFullAlphaChannel";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          txHiresFullAlphaChannel = !strcmp(var.value, "禁用") ? 0 : 1;
+          txHiresFullAlphaChannel = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-MaxTxCacheSize";
@@ -1016,53 +954,67 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          enableLegacyBlending = !strcmp(var.value, "禁用") ? 0 : 1;
+          enableLegacyBlending = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableFragmentDepthWrite";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableFragmentDepthWrite = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableFragmentDepthWrite = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableShadersStorage";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableShadersStorage = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableShadersStorage = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableTextureCache";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableTextureCache = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableTextureCache = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableEnhancedTextureStorage";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableEnhancedTextureStorage = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableEnhancedTextureStorage = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-EnableEnhancedHighResStorage";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableEnhancedHighResStorage = !strcmp(var.value, "禁用") ? 0 : 1;
+          EnableEnhancedHighResStorage = !strcmp(var.value, "False") ? 0 : 1;
+       }
+
+       var.key = CORE_NAME "-EnableHiResAltCRC";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          EnableHiResAltCRC = !strcmp(var.value, "False") ? 0 : 1;
+       }
+
+       var.key = CORE_NAME "-EnableCopyAuxToRDRAM";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          EnableCopyAuxToRDRAM = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-cpucore";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "纯解释器"))
+          if (!strcmp(var.value, "pure_interpreter"))
              r4300_emumode = EMUMODE_PURE_INTERPRETER;
-          else if (!strcmp(var.value, "缓存式解释器"))
+          else if (!strcmp(var.value, "cached_interpreter"))
              r4300_emumode = EMUMODE_INTERPRETER;
-          else if (!strcmp(var.value, "动态重编译器"))
+          else if (!strcmp(var.value, "dynamic_recompiler"))
              r4300_emumode = EMUMODE_DYNAREC;
        }
 
@@ -1070,7 +1022,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          if (!strcmp(var.value, "16:9调整")) {
+          if (!strcmp(var.value, "16:9 adjusted")) {
              AspectRatio = 3;
              retro_screen_aspect = 16.0 / 9.0;
           } else if (!strcmp(var.value, "16:9")) {
@@ -1080,6 +1032,13 @@ static void update_variables(bool startup)
              AspectRatio = 1;
              retro_screen_aspect = 4.0 / 3.0;
           }
+       }
+
+       var.key = CORE_NAME "-EnableNativeResFactor";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+         EnableNativeResFactor = atoi(var.value);
        }
 
        var.key = (AspectRatio == 1 ? CORE_NAME "-43screensize" : CORE_NAME "-169screensize");
@@ -1094,7 +1053,8 @@ static void update_variables(bool startup)
           if((retro_screen_width == 320 && retro_screen_height == 240) ||
              (retro_screen_width == 640 && retro_screen_height == 360))
           {
-            EnableNativeResFactor = 1; // Force factor == 1
+             // Force factor to 1 for low resolutions, unless set manually
+             EnableNativeResFactor = !EnableNativeResFactor ? 1 : EnableNativeResFactor;
           }
        }
 
@@ -1203,7 +1163,7 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          EnableOverscan = !strcmp(var.value, "启用") ? 1 : 0;
+          EnableOverscan = !strcmp(var.value, "Enabled") ? 1 : 0;
        }
 
        var.key = CORE_NAME "-OverscanTop";
@@ -1238,16 +1198,119 @@ static void update_variables(bool startup)
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          alternate_mapping = !strcmp(var.value, "禁用") ? 0 : 1;
+          alternate_mapping = !strcmp(var.value, "False") ? 0 : 1;
        }
 
        var.key = CORE_NAME "-ForceDisableExtraMem";
        var.value = NULL;
        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        {
-          ForceDisableExtraMem = !strcmp(var.value, "禁用") ? 0 : 1;
+          ForceDisableExtraMem = !strcmp(var.value, "False") ? 0 : 1;
+       }
+
+       var.key = CORE_NAME "-IgnoreTLBExceptions";
+       var.value = NULL;
+       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       {
+          if (!strcmp(var.value, "False"))
+             IgnoreTLBExceptions = 0;
+          else if (!strcmp(var.value, "OnlyNotEnabled"))
+             IgnoreTLBExceptions = 1;
+          else if (!strcmp(var.value, "AlwaysIgnoreTLB"))
+             IgnoreTLBExceptions = 2;
        }
     }
+
+#ifdef HAVE_PARALLEL_RDP
+    if (current_rdp_type == RDP_PLUGIN_PARALLEL)
+    {
+        var.key = CORE_NAME "-parallel-rdp-synchronous";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_synchronous_rdp(!strcmp(var.value, "True"));
+        else
+            parallel_set_synchronous_rdp(true);
+
+        var.key = CORE_NAME "-parallel-rdp-overscan";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_overscan_crop(strtol(var.value, NULL, 0));
+        else
+            parallel_set_overscan_crop(0);
+
+        var.key = CORE_NAME "-parallel-rdp-divot-filter";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_divot_filter(!strcmp(var.value, "True"));
+        else
+            parallel_set_divot_filter(true);
+
+        var.key = CORE_NAME "-parallel-rdp-gamma-dither";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_gamma_dither(!strcmp(var.value, "True"));
+        else
+            parallel_set_gamma_dither(true);
+
+        var.key = CORE_NAME "-parallel-rdp-vi-aa";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_vi_aa(!strcmp(var.value, "True"));
+        else
+            parallel_set_vi_aa(true);
+
+        var.key = CORE_NAME "-parallel-rdp-vi-bilinear";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_vi_scale(!strcmp(var.value, "True"));
+        else
+            parallel_set_vi_scale(true);
+
+        var.key = CORE_NAME "-parallel-rdp-dither-filter";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_dither_filter(!strcmp(var.value, "True"));
+        else
+            parallel_set_dither_filter(true);
+
+        var.key = CORE_NAME "-parallel-rdp-upscaling";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_upscaling(strtol(var.value, NULL, 0));
+        else
+            parallel_set_upscaling(1);
+
+        var.key = CORE_NAME "-parallel-rdp-downscaling";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+        {
+            if (!strcmp(var.value, "disable"))
+                parallel_set_downscaling_steps(0);
+            else if (!strcmp(var.value, "1/2"))
+                parallel_set_downscaling_steps(1);
+            else if (!strcmp(var.value, "1/4"))
+                parallel_set_downscaling_steps(2);
+            else if (!strcmp(var.value, "1/8"))
+                parallel_set_downscaling_steps(3);
+        }
+        else
+            parallel_set_downscaling_steps(0);
+
+        var.key = CORE_NAME "-parallel-rdp-native-texture-lod";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_native_texture_lod(!strcmp(var.value, "True"));
+        else
+            parallel_set_native_texture_lod(false);
+
+        var.key = CORE_NAME "-parallel-rdp-native-tex-rect";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            parallel_set_native_tex_rect(!strcmp(var.value, "True"));
+        else
+            parallel_set_native_tex_rect(true);
+    }
+#endif
 
 #ifdef HAVE_THR_AL
     if (current_rdp_type == RDP_PLUGIN_ANGRYLION)
@@ -1259,43 +1322,43 @@ static void update_variables(bool startup)
 
         if (var.value)
         {
-           if (!strcmp(var.value, "全滤镜"))
+           if (!strcmp(var.value, "Filtered"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "抗锯齿+模糊"))
+           else if (!strcmp(var.value, "AA+Blur"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(0);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "抗锯齿+消除抖动"))
+           else if (!strcmp(var.value, "AA+Dedither"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(0);
            }
-           else if (!strcmp(var.value, "仅抗锯齿"))
+           else if (!strcmp(var.value, "AA only"))
            {
               angrylion_set_vi(0);
               angrylion_set_vi_dedither(0);
               angrylion_set_vi_blur(0);
            }
-           else if (!strcmp(var.value, "无滤镜"))
+           else if (!strcmp(var.value, "Unfiltered"))
            {
               angrylion_set_vi(1);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "深度"))
+           else if (!strcmp(var.value, "Depth"))
            {
               angrylion_set_vi(2);
               angrylion_set_vi_dedither(1);
               angrylion_set_vi_blur(1);
            }
-           else if (!strcmp(var.value, "范围"))
+           else if (!strcmp(var.value, "Coverage"))
            {
               angrylion_set_vi(3);
               angrylion_set_vi_dedither(1);
@@ -1316,11 +1379,11 @@ static void update_variables(bool startup)
 
         if (var.value)
         {
-           if (!strcmp(var.value, "高"))
+           if (!strcmp(var.value, "High"))
               angrylion_set_synclevel(2);
-           else if (!strcmp(var.value, "中"))
+           else if (!strcmp(var.value, "Medium"))
               angrylion_set_synclevel(1);
-           else if (!strcmp(var.value, "低"))
+           else if (!strcmp(var.value, "Low"))
               angrylion_set_synclevel(0);
         }
         else
@@ -1346,9 +1409,9 @@ static void update_variables(bool startup)
 
         if (var.value)
         {
-           if (!strcmp(var.value, "启用"))
+           if (!strcmp(var.value, "enabled"))
               angrylion_set_overscan(1);
-           else if (!strcmp(var.value, "禁用"))
+           else if (!strcmp(var.value, "disabled"))
               angrylion_set_overscan(0);
         }
         else
@@ -1372,7 +1435,7 @@ static void format_saved_memory(void)
     format_mempak(saved_memory.mempack + 3 * MEMPAK_SIZE);
 }
 
-static void context_reset(void)
+void context_reset(void)
 {
     static bool first_init = true;
 
@@ -1396,6 +1459,10 @@ static void context_destroy(void)
     {
        glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
     }
+#ifdef HAVE_PARALLEL_RDP
+    if (current_rdp_type == RDP_PLUGIN_PARALLEL)
+        parallel_deinit();
+#endif
 }
 
 static bool context_framebuffer_lock(void *data)
@@ -1403,6 +1470,38 @@ static bool context_framebuffer_lock(void *data)
     //if (!stop)
      //   return false;
     return true;
+}
+
+static bool retro_init_vulkan(void)
+{
+#if defined(HAVE_PARALLEL_RDP)
+   hw_render.context_type    = RETRO_HW_CONTEXT_VULKAN;
+   hw_render.version_major   = VK_MAKE_VERSION(1, 1, 0);
+   hw_render.context_reset   = context_reset;
+   hw_render.context_destroy = context_destroy;
+
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.\n");
+      return false;
+   }
+
+   hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
+   hw_context_negotiation.get_application_info = parallel_get_application_info;
+   hw_context_negotiation.create_device = parallel_create_device;
+   hw_context_negotiation.destroy_device = NULL;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.\n");
+   }
+
+   return true;
+#else
+   return false;
+#endif
 }
 
 bool retro_load_game(const struct retro_game_info *game)
@@ -1428,11 +1527,21 @@ bool retro_load_game(const struct retro_game_info *game)
         }
     }
 
+    // Init savestate job var
+    retro_savestate_complete = true;
+
     glsm_ctx_params_t params = {0};
     format_saved_memory();
 
     update_variables(true);
     initial_boot = false;
+
+    if(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer)
+    {
+       initializing = true;
+       retro_thread = co_active();
+       game_thread = co_create(65536 * sizeof(void*) * 16, gln64_thr_gl_invoke_command_loop);
+    }
 
     init_audio_libretro(audio_buffer_size);
 
@@ -1449,6 +1558,14 @@ bool retro_load_game(const struct retro_game_info *game)
         return false;
     }
 
+#ifdef HAVE_PARALLEL_RDP
+    if (current_rdp_type == RDP_PLUGIN_PARALLEL)
+    {
+        if (!retro_init_vulkan())
+            return false;
+    }
+#endif
+
     game_data = malloc(game->size);
     memcpy(game_data, game->data, game->size);
     game_size = game->size;
@@ -1456,7 +1573,7 @@ bool retro_load_game(const struct retro_game_info *game)
     if (!emu_step_load_data())
         return false;
 
-    if(current_rdp_type == RDP_PLUGIN_GLIDEN64)
+    if(current_rdp_type == RDP_PLUGIN_GLIDEN64 || current_rdp_type == RDP_PLUGIN_PARALLEL)
     {
        first_context_reset = true;
     }
@@ -1474,15 +1591,41 @@ bool retro_load_game(const struct retro_game_info *game)
 
 void retro_unload_game(void)
 {
+    if(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer)
+    {
+       environ_clear_thread_waits_cb(1, NULL);
+    }
+
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
+
+    if(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer)
+    {
+       CoreDoCommand(M64CMD_STOP, 0, NULL);
+
+       // Run one more frame to unlock it
+       glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
+       while(!threaded_gl_safe_shutdown)
+       {
+          co_switch(game_thread);
+       }
+       glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
+    
+       pthread_join(emuThread, NULL);
+
+       environ_clear_thread_waits_cb(0, NULL);
+    }
+
     emu_initialized = false;
+
+    // Reset savestate job var
+    retro_savestate_complete = false;
 }
 
 void retro_run (void)
 {
     libretro_swap_buffer = false;
     static bool updated = false;
-    
+
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
        update_variables(false);
        update_controllers();
@@ -1490,6 +1633,15 @@ void retro_run (void)
 
     if(current_rdp_type == RDP_PLUGIN_GLIDEN64)
     {
+       if(EnableThreadedRenderer)
+       {
+          if(!emuThreadRunning)
+          {
+             pthread_create(&emuThread, NULL, &EmuThreadFunction, NULL);
+             emuThreadRunning = true;
+          }
+       }
+       
        glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
     }
 
@@ -1512,13 +1664,21 @@ void retro_run (void)
           video_cb(prescale, retro_screen_width, retro_screen_height, screen_pitch);
        }
 #endif // HAVE_THR_AL
+#ifdef HAVE_PARALLEL_RDP
+       else if (current_rdp_type == RDP_PLUGIN_PARALLEL)
+       {
+           parallel_profile_video_refresh_begin();
+           video_cb(parallel_frame_is_valid() ? RETRO_HW_FRAME_BUFFER_VALID : NULL,
+                   parallel_frame_width(), parallel_frame_height(), 0);
+           parallel_profile_video_refresh_end();
+       }
+#endif
     }
     else if(EnableFrameDuping)
     {
         // screen_pitch will be 0 for GLN
         video_cb(NULL, retro_screen_width, retro_screen_height, screen_pitch);
     }
-        
 }
 
 void retro_reset (void)
@@ -1555,26 +1715,68 @@ size_t retro_serialize_size (void)
 
 bool retro_serialize(void *data, size_t size)
 {
-    if (initializing)
-        return false;
+   if (initializing)
+      return false;
 
-    int success = savestates_save_m64p(&g_dev, data);
-    if (success)
-        return true;
+   retro_savestate_complete = false;
+   retro_savestate_result = 0;
 
-    return false;
+   savestates_set_job(savestates_job_save, savestates_type_m64p, data);
+
+   if (current_rdp_type == RDP_PLUGIN_GLIDEN64)
+   {
+      if(EnableThreadedRenderer)
+      {
+         // Ensure the Audio driver is on (f.e. menu sounds off)
+         environ_clear_thread_waits_cb(1, NULL);
+      }
+      glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
+   }
+
+   while (!retro_savestate_complete)
+   {
+      co_switch(game_thread);
+   }
+
+   if (current_rdp_type == RDP_PLUGIN_GLIDEN64)
+   {
+      glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
+   }
+
+   return !!retro_savestate_result;
 }
 
-bool retro_unserialize(const void * data, size_t size)
+bool retro_unserialize(const void *data, size_t size)
 {
-    if (initializing)
-        return false;
+   if (initializing)
+      return false;
 
-    int success = savestates_load_m64p(&g_dev, data);
-    if (success)
-        return true;
+   retro_savestate_complete = false;
+   retro_savestate_result = 0;
 
-    return false;
+   savestates_set_job(savestates_job_load, savestates_type_m64p, data);
+
+   if (current_rdp_type == RDP_PLUGIN_GLIDEN64)
+   {
+      if(EnableThreadedRenderer)
+      {
+         // Ensure the Audio driver is on (f.e. menu sounds off)
+         environ_clear_thread_waits_cb(1, NULL);
+      }
+      glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
+   }
+
+   while (!retro_savestate_complete)
+   {
+      co_switch(game_thread);
+   }
+
+   if (current_rdp_type == RDP_PLUGIN_GLIDEN64)
+   {
+      glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
+   }
+
+   return true;
 }
 
 //Needed to be able to detach controllers for Lylat Wars multiplayer
@@ -1655,7 +1857,10 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 
 void retro_return(void)
 {
-    co_switch(retro_thread);
+    if(!(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer))
+    {
+       co_switch(retro_thread);
+    }
 }
 
 uint32_t get_retro_screen_width()
